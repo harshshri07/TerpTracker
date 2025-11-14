@@ -17,6 +17,13 @@ app-dev:
 	make
 	python3 -m flask run --host=0.0.0.0 --port=5000
 
+terptracker-dev:
+	docker compose down --remove-orphans dynamodb-local dynamodb
+	docker compose up -d --remove-orphans dynamodb-local dynamodb
+	export DB_MODE=DEV
+	make
+	python3 -m flask run --host=0.0.0.0 --port=5000
+
 app-local:
 	docker compose down --remove-orphans dynamodb-local dynamodb
 	docker compose up -d --remove-orphans dynamodb-local dynamodb
