@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Expense Pie Chart{% endblock %}
+{% block content %}
+
+<h2 class="mt-4">Monthly Expense Breakdown</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="fs-5 fw-semibold">
+    Month: {{ selected_month or request.args.get('month') or '—' }}
+  </div>
+  <div class="d-flex gap-2">
+    <a
+      class="btn btn-secondary"
+      href="{{ url_for('summary.home', month=(selected_month or request.args.get('month'))) }}"
+    >
+      ← Back to Table
+    </a>
+  </div>
+</div>
+
+{% if expenses and expenses|length %}
+  <div class="row">
+    <div class="col-lg-7 mb-4">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Spend by Category</h5>
+          <canvas id="pieChart" height="220" aria-label="Expense by Category" role="img"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="card-title">Category Totals</h6>
+          <ul id="legendList" class="list-group list-group-flush small"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+  (function () {
+    // Expenses from server
+    const expenses = {{ (expenses or []) | tojson }};
+
+    // Aggregate by category; amounts may be strings in DynamoDB
+    const totals = {};
+    for (const e of expenses) {
+      const cat = (e.expenseCategory || e.categoryName || e.category || 'Uncategorized');
+      const amt = parseFloat(e.expenseAmount ?? e.amount ?? 0) || 0;
+      totals[cat] = (totals[cat] || 0) + amt;
+    }
+
+    const labels = Object.keys(totals);
+    const data   = labels.map(l => totals[l]);
+    if (!labels.length) return;
+
+    function palette(n){
+      const base = ["#4bc0c0","#ff6384","#ffce56","#36a2eb","#9966ff","#ff9f40",
+                    "#c9cbcf","#2ecc71","#e74c3c","#3498db","#f1c40f"];
+      const out = [];
+      for (let i=0;i<n;i++) out.push(base[i % base.length]);
+      return out;
+    }
+    const colors = palette(labels.length);
+
+    // Render doughnut chart
+    const ctx = document.getElementById('pieChart');
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{ data, backgroundColor: colors, borderWidth: 1 }]
+      },
+      options: {
+        responsive: true,
+        cutout: '55%',  // 0 for full pie
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const v = ctx.parsed;
+                const total = data.reduce((a,b)=>a+b,0);
+                const pct = total ? (v/total*100) : 0;
+                return `${ctx.label}: $${v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})} (${pct.toFixed(1)}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Build side legend with values & percentages (sorted desc)
+    const list = document.getElementById('legendList');
+    if (list) {
+      const pairs = labels.map((l,i)=>[l, data[i], colors[i]]).sort((a,b)=>b[1]-a[1]);
+      const grand = data.reduce((a,b)=>a+b,0);
+      for (const [label, value, color] of pairs) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        const name = document.createElement('span');
+        name.innerHTML =
+          `<span style="display:inline-block;width:12px;height:12px;background:${color};margin-right:8px;border-radius:2px;"></span>${label}`;
+        const amt = document.createElement('span');
+        const pct = grand ? (value/grand*100) : 0;
+        amt.textContent = `$${value.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})} (${pct.toFixed(1)}%)`;
+        li.appendChild(name); li.appendChild(amt);
+        list.appendChild(li);
+      }
+    }
+  })();
+  </script>
+{% else %}
+  <div class="alert alert-info">
+    No expenses to chart for {{ selected_month or request.args.get('month') or 'the selected month' }}.
+  </div>
+{% endif %}
+
+{% endblock %}

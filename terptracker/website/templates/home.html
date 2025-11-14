@@ -1,0 +1,96 @@
+{% extends "base.html" %} {% block title %}Home{% endblock %} {% block content
+%}
+<form method="POST" class="mt-4">
+    <h2>Welcome to TerpTracker</h2>
+
+    <!-- Expense Type -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="expense_type" class="form-label">Expense Type</label>
+          <select id="expense_type" name="expense_type" class="form-control form-control" required>
+            <option value="" disabled selected>Select a payment type</option>
+            <option value="card">Card</option>
+            <option value="cash">Cash</option>
+            <option value="mobile_virtual">Mobile/Virtual</option>
+            <option value="bank">Bank</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+    </div>
+
+    <!-- Category (Floating label select) -->
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <label for="expense_category" class="form-label">Category</label>
+        <!-- Use form-control to match your example's look; add -lg to make it larger -->
+        <select id="expense_category" name="expense_category"
+                class="form-control form-control" required>
+          <option value="" disabled selected>Select a category</option>
+          {% if categories %}
+            {% for c in categories %}
+              <option value="{{ c.id or c.value }}">{{ c.name }}</option>
+            {% endfor %}
+          {% else %}
+            <option value="groceries">Groceries</option>
+            <option value="utilities">Utilities</option>
+            <option value="gas">Gas</option>
+            <option value="rent">Rent</option>
+            <option value="food">Food &amp; Dining</option>
+            <option value="entertainment">Entertainment</option>
+            <option value="travel">Travel</option>
+            <option value="other">Other</option>
+          {% endif %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Date of Expense (Calendar picker) -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="expense_date" class="form-label">Date of Expense</label>
+          <input
+            type="date"
+            id="expense_date"
+            name="expense_date"
+            class="form-control"
+            required
+            value="{{ request.form.expense_date or '' }}"
+          >
+        </div>
+    </div>
+
+    <!-- Amount -->
+    <div class="mb-3">
+      <label for="expense_amount" class="form-label">Enter Expense</label>
+      <div class="input-group">
+        <span class="input-group-text">$</span>
+        <input
+          type="number"
+          name="expense_amount"
+          id="expense_amount"
+          class="form-control"
+          step="0.01"
+          min="0"
+          placeholder="0.00"
+          inputmode="decimal"
+          required
+        >
+      </div>
+<!--      <div class="form-text">Enter the total you spent (dollars and cents).</div>-->
+    </div>
+
+    <!-- Optional note -->
+    <div class="mb-3">
+      <label for="expense_note" class="form-label">Note (optional)</label>
+      <input
+        type="text"
+        name="expense_note"
+        id="expense_note"
+        class="form-control"
+        placeholder="e.g., Lunch at Chipotle"
+      >
+    </div>
+
+    <button type="submit" class="btn btn-primary">Add Expense</button>
+</form>
+{% endblock %}

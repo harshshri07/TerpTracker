@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+
+<h2 class="mt-4">Monthly Expense Tracker</h2>
+
+<!-- Month selector (POST to summary.home) -->
+<form method="POST" action="{{ url_for('summary.home') }}" class="row g-3 mt-2 mb-3 align-items-center">
+  <div class="col-auto">
+    <label for="month" class="col-form-label fs-3 fw-semibold">Select month:</label>
+  </div>
+
+  <!-- Wrap in position-relative so we can overlay placeholder text -->
+  <div class="col-auto position-relative">
+    <input
+      type="month"
+      id="month"
+      name="month"
+      class="form-control"
+      value="{{ request.values.get('month') or selected_month or '' }}"
+      required
+    >
+    <!-- Faux placeholder (hidden server-side if value is present) -->
+    <span id="monthPlaceholder"
+          class="text-muted position-absolute"
+          style="left:.75rem; top:50%; transform:translateY(-50%); pointer-events:none;
+                 display: {{ 'none' if (request.values.get('month') or selected_month) else 'block' }};">
+    </span>
+  </div>
+
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary">Show</button>
+  </div>
+
+  <!-- Pie chart button to the right; doesn't submit the form -->
+  <div class="col-auto">
+    <button type="button" class="btn btn-outline-success"
+        onclick="location.href='{{ url_for('summary.get_pie_chart', year=selected_year, month=selected_month) }}'">
+      View Pie Chart
+    </button>
+  </div>
+</form>
+
+{# --- Compute total in-template using a namespace (handles string amounts) --- #}
+{% set ns = namespace(total=0.0) %}
+{% if expenses %}
+  {% for e in expenses %}
+    {% set ns.total = ns.total + (e.expenseAmount or e.amount or 0)|float %}
+  {% endfor %}
+{% endif %}
+
+{% if expenses and expenses|length %}
+  <!-- Bold total box at the top -->
+  <div class="mb-3 p-3 bg-light border rounded-3">
+    <div class="fs-5 fw-bold mb-0">
+      Total for {{ selected_month or (request.values.get('month') or '') }}: ${{ '%.2f' % ns.total }}
+    </div>
+    <div class="text-muted small">Items: {{ expenses|length }}</div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Category</th>
+          <th scope="col">Type</th>
+          <th scope="col">Merchant</th>
+          <th scope="col">Note</th>
+          <th scope="col" class="text-end">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in expenses %}
+        {% set amt = (e.expenseAmount or e.amount or 0)|float %}
+        {% set raw_date = e.date_str or e.occurredAt or e.expense_date or e.get('date') %}
+        <tr>
+          <td>{{ (raw_date|string)[:10] }}</td>
+          <td class="text-capitalize">{{ e.expenseCategory or e.categoryName or e.category or '' }}</td>
+          <td class="text-capitalize">{{ e.expenseType or e.type or e.payment_method or '' }}</td>
+          <td>{{ e.merchant or '' }}</td>
+          <td>{{ e.userNote or e.note or '' }}</td>
+          <td class="text-end">${{ '%.2f' % amt }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="alert alert-info">
+    Refresh expenses.
+  </div>
+{% endif %}
+
+<!-- Toggle faux placeholder + wire up the pie chart button -->
+<script>
+  (function () {
+    const monthInput = document.getElementById('month');
+    const pieBtn     = document.getElementById('viewPieBtn');
+    const pieBase    = "{{ url_for('summary.get_pie_chart') }}";
+    const ph         = document.getElementById('monthPlaceholder');
+
+    function togglePlaceholder() {
+      if (!ph || !monthInput) return;
+      ph.style.display = monthInput.value ? 'none' : 'block';
+    }
+
+    // Initialize and listen for changes
+    togglePlaceholder();
+    monthInput.addEventListener('input', togglePlaceholder);
+    monthInput.addEventListener('change', togglePlaceholder);
+
+    // Redirect to pie page with ?month=YYYY-MM (no form submit)
+    pieBtn && pieBtn.addEventListener('click', function () {
+      const m = monthInput?.value || "";
+      window.location.href = m ? `${pieBase}?month=${encodeURIComponent(m)}` : pieBase;
+    });
+  })();
+</script>
+
+{% endblock %}
